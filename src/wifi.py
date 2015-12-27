@@ -8,24 +8,18 @@ class WifiInterface():
   __last_cmd = ''
   __wifi_serial = None
 
+
   # AP
   __ap_name      = "PiCopter-Wifi"
   __ap_password  = ""
   __ap_channel   = 2
   __ap_sec       = 0
 
-  def __init__(self, baud, server_ip, server_port):
+  def __init__(self, baud, wifi_mode, server_ip, server_port):
     self.__baud_rate = baud
     self.__ip = server_ip
     self.__port = server_port
-
-    #-------------------------------------------------------------------
-    # SerialPort = "/dev/ttyAMA0"
-    # SerialBaudrate = 115200
-    #servIP = "74.125.225.6"      # Google's IP Number
-    #servPort = 80
-    servIP = "192.168.178.20"
-    servPort = 8888
+    self.__WIFI_MODE = wifi_mode
 
 
   def __init_serial_interface(self):
@@ -37,7 +31,7 @@ class WifiInterface():
     self.__wifi_serial.timeout = 2
     self.__wifi_serial.writeTimeout = 2
 
-    # needed ? 
+    # needed ?
     self.__wifi_serial.bytesize = serial.EIGHTBITS
     self.__wifi_serial.parity = serial.PARITY_NONE
     self.__wifi_serial.stopbits = serial.STOPBITS_ONE
@@ -85,21 +79,41 @@ class WifiInterface():
     else:
         print "Error!!!"
 
-    # setup server
-    self.send_cmd('AT+CIPMUX=1')
-    self.send_cmd("AT+CIPSERVER=1," + str(self.__port))
+    self.send_cmd("AT+RST", 2, "ready")
+    time.sleep(0.5)
 
-    # setup mode
-    self.send_cmd("AT+CWMODE=3")
-    self.send_cmd("AT+CWMODE?")
+    if "ACCESS_POINT" == self.__WIFI_MODE:
+      # setup server
+      self.send_cmd('AT+CIPMUX=1')
+      self.send_cmd("AT+CIPSERVER=1," + str(self.__port))
 
-    # setup ap
-    self.send_cmd("AT+CWSAP=\"" + self.__ap_name + "\",\"" +  self.__ap_password + "\"," + str(self.__ap_channel) + "," + str(self.__ap_sec))
-    self.send_cmd("AT+CWSAP?")
+      # setup mode
+      self.send_cmd("AT+CWMODE=3")
+      self.send_cmd("AT+CWMODE?")
+
+      # setup ap
+      self.send_cmd("AT+CWSAP=\"" + self.__ap_name + "\",\"" +  self.__ap_password + "\"," + str(self.__ap_channel) + "," + str(self.__ap_sec))
+      self.send_cmd("AT+CWSAP?")
+
+    elif "CLIENT" == self.__WIFI_MODE:
+
+      self.send_cmd("AT+CWMODE=2")
+      self.send_cmd("AT+CWMODE?")
+
+      # self.send_cmd("AT+CWJAP=\"" + self.__ap_name + "\",\"" + self.__ap_password + "\"", 10)
+      # self.send_cmd("AT+CWJAP?")
+
+      self.send_cmd("AT+CWSAP=\"" + self.__ap_name + "\",\"" +  self.__ap_password + "\"," + str(self.__ap_channel) + "," + str(self.__ap_sec), 10)
+      self.send_cmd("AT+CWSAP?")
+
+      # self.send_cmd("AT+CIPMUX=1")
+
+      # AT+CIPSTART="UDP","0",0,10000,2 //set udp local port , remote ip and port is irrespective until send data...
+      self.send_cmd("AT+CIPSTART=\"UDP\",\"0\",0,8888,2", 5)
+
 
     # get ip address
     self.send_cmd("AT+CIFSR")
-
 
 
   def send_cmd(self, cmd, timo = 1, term='OK'):
@@ -111,21 +125,33 @@ class WifiInterface():
 
     self.__wifi_serial.write(cmd + "\r\n")
     # check response
-    ret = self.__wifi_serial.readline()
+    resp_buffer = self.__wifi_serial.readline()
     time.sleep( 0.2 )
     # TODO: add timeout
-    # while( lp < waitTm ):
-    while( self.__wifi_serial.inWaiting() ):
-      ret = self.__wifi_serial.readline().strip( "\r\n" )
-      if(self.__debug):
-        print(ret)
-      # lp = 0
-      if( ret == term ): break
-      if( ret == 'ready' ): break
-      if( ret == 'ERROR' ): break
-      if( ret == 'Error' ): break
-      # sleep( 1 )
-      # lp += 1
+    start_time = time.clock()
+    if(self.__debug):
+      print("Start time: " + str(start_time))
+    while( time.clock() - start_time < timo ):
+      while( self.__wifi_serial.inWaiting() ):
+        resp_buffer += self.__wifi_serial.readline() #.strip( "\r\n" )
+
+      if term in resp_buffer:
+        ret = term
+        break
+      if 'ready' in resp_buffer:
+        ret = 'ready'
+        break
+      if 'ERROR' in resp_buffer:
+        ret = 'ERROR'
+        break
+      if 'Error' in resp_buffer:
+        ret = 'Error'
+        break
+
+    if(self.__debug):
+      print(resp_buffer)
+      print("Return value: " + ret)
+      print("Runtime: " + str(time.clock() - start_time) + " sec")
     return ret
 
   # ------------------------------------------
@@ -146,15 +172,21 @@ class WifiInterface():
     if(self.__wifi_serial.inWaiting()):
       while (self.__wifi_serial.inWaiting()):
         cmd += self.__wifi_serial.readline()
-        print self.__wifi_serial.inWaiting()
-        print cmd
-      if(cmd.find("+IPD,") > 0):
-        print "IPD gefunden"
+        # print self.__wifi_serial.inWaiting()
+        # print cmd
+      # if(cmd.find("+IPD,") > 0):
+        # print "IPD gefunden"
         # Todo prufen auf gewunschte lange
-        self.send_response()
-    ret = self.__last_cmd
-    self.__last_cmd = ''
-    return ret
+        # self.send_response()
+    if( cmd != "" ):
+      print( cmd )
+      if "IPD" in cmd:
+        cmd = cmd.split(":", 1)[1]
+        print(cmd)
+        self.__last_cmd = cmd
+
+      print("Return value: " + cmd)
+    return cmd
 
 
   def send_response(self):

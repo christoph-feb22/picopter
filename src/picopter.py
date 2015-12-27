@@ -7,16 +7,20 @@ wifi_interface = None
 def init():
   # set up the wifi interface
   global wifi_interface
-  wifi_interface = WifiInterface(115200, '192.168.2.1', 8888)
+  wifi_interface = WifiInterface(115200, "CLIENT", '192.168.2.1', 8888)
   wifi_interface.init_interface()
 
   # set up the motors
+  global motor_fr
   motor_fr = Motor(17)
   motor_fr.setup
+  global motor_fl
   motor_fl = Motor(18)
   motor_fl.setup
+  global motor_br
   motor_br = Motor(19)
   motor_br.setup
+  global motor_bl
   motor_bl = Motor(20)
   motor_bl.setup
 
