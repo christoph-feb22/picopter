@@ -13,16 +13,16 @@ def init():
   # set up the motors
   global motor_fr
   motor_fr = Motor(17)
-  motor_fr.setup
+  motor_fr.setup()
   global motor_fl
   motor_fl = Motor(18)
-  motor_fl.setup
+  motor_fl.setup()
   global motor_br
   motor_br = Motor(19)
-  motor_br.setup
+  motor_br.setup()
   global motor_bl
   motor_bl = Motor(20)
-  motor_bl.setup
+  motor_bl.setup()
 
 
 def loop():
@@ -42,6 +42,16 @@ def loop():
       motor_fl.dec_speed()
       motor_br.dec_speed()
       motor_bl.dec_speed()
+    elif (wifi_cmd == 'config_esc'):
+      motor_fr.set_speed(0)
+      motor_fl.set_speed(0)
+      motor_br.set_speed(0)
+      motor_bl.set_speed(0)
+    elif (wifi_cmd == 'stop'):
+      motor_fr.set_speed(0)
+      motor_fl.set_speed(0)
+      motor_br.set_speed(0)
+      motor_bl.set_speed(0)
 
 init()
 loop()

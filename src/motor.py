@@ -14,22 +14,23 @@ class Motor(object):
 
   def setup(self):
     # set speed to max
-    set_speed(100)
+    self.set_speed(100)
 
-    # wait 1 second
-    time.sleep(1)
-
-    set_speed(0)
+    # now plug esc power on
+    # send command config_esc over udp to finish setup
 
 
   def inc_speed(self, step = 1):
     if(self.__speed < self.__max_speed):
-      set_speed(self.__speed + step)
+      self.set_speed(self.__speed + step)
 
   def dec_speed(self, step = 1):
     if(self.__speed > 0):
-      set_speed(self.__speed + step)
+      self.set_speed(self.__speed - step)
 
   def set_speed(self, value):
-    self.__servo.add_channel_pulse()
+    self.__speed = value
+    calc_value = (1000 + value * 10)
+    if( calc_value >= 1000 and calc_value <= 2000):
+      self.__servo.set_servo(self.__pin, calc_value)
 
